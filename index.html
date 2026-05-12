@@ -1128,7 +1128,7 @@
     // ══════════════════════════════════════════
     //  URL de tu Google Apps Script
     // ══════════════════════════════════════════
-    const API_URL = "https://script.google.com/macros/s/AKfycbwShdj6s0Rnzjr2vnHK8PA1yHs5vkWYrCTocCEbuhfKVPdQZ5YHuQC8oA1r64J7XG7WSw/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbw7uNmQq6Tow8iVrG59xNWKs3VtLLcIdLqFhVb12RTSca8vfzrlWAjJX2E8taVLppOwZA/exec";
 
     /* ── PARTÍCULAS ── */
     const canvas = document.getElementById('particle-canvas');
@@ -1245,14 +1245,28 @@
         }
     }
 
-    /* ── LLAMADA A LA API ── */
-    async function llamarAPI(datos) {
-        const params = new URLSearchParams(datos);
-        const response = await fetch(API_URL + '?' + params.toString(), {
-            method: 'GET',
-            redirect: 'follow'
+    /* ── LLAMADA A LA API (JSONP para evitar CORS) ── */
+    function llamarAPI(datos) {
+        return new Promise((resolve, reject) => {
+            const callbackName = 'docentia_cb_' + Date.now();
+            const params = new URLSearchParams(datos);
+            params.set('callback', callbackName);
+
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                document.body.removeChild(script);
+                resolve(data);
+            };
+
+            const script = document.createElement('script');
+            script.src = API_URL + '?' + params.toString();
+            script.onerror = function() {
+                delete window[callbackName];
+                document.body.removeChild(script);
+                reject(new Error('Error de red'));
+            };
+            document.body.appendChild(script);
         });
-        return await response.json();
     }
 
     /* ══════════════════════════════════════════
